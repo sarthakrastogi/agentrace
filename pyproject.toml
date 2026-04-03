@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent_snoop"
+version = "0.1.0"
+description = "Agent observability: trace any AI agent and store runs in MongoDB (and more)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [
+    { name = "Sarthak Rastogi", email = "sarthakrastogi.ai@gmail.com" }
+]
+keywords = ["ai", "agents", "observability", "tracing", "llm", "langgraph", "mongodb"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core deps — kept intentionally minimal
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+# Storage backends
+mongo = ["pymongo>=4.0"]
+
+# Framework integrations
+langgraph = ["langchain-core>=0.1", "langgraph>=0.1", "langchain-google-genai>=1.0"]
+autogen = []   # placeholder for future support
+crewai  = []   # placeholder for future support
+
+# Install everything
+all = ["agent_snoop[mongo,langgraph]"]
+
+# Dev / test toolchain
+dev = [
+    "agent_snoop[all]",
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+    "mongomock>=4.0",      # in-memory MongoDB for tests
+    "ruff>=0.4",
+    "mypy>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/sarthakrastogi/agent_snoop"
+Repository = "https://github.com/sarthakrastogi/agent_snoop"
+"Bug Tracker" = "https://github.com/sarthakrastogi/agent_snoop/issues"
+Changelog = "https://github.com/sarthakrastogi/agent_snoop/blob/main/CHANGELOG.md"
+
+# ---------------------------------------------------------------------------
+# Tool config
+# ---------------------------------------------------------------------------
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent_snoop"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+ignore_missing_imports = true
