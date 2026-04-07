@@ -61,11 +61,43 @@ class MongoDBBackend(StorageBackend):
             self._client.close()
             # Extract just the human-readable part — pymongo errors are very verbose.
             short_reason = str(exc).split("Timeout:")[0].strip().rstrip(",")
-            raise ConnectionError(
-                f"agent_snoop: could not reach MongoDB at {_redact_uri(uri)}\n"
-                f"  Reason: {short_reason}\n\n"
-                f"  Check your URI, credentials, and network/IP-allowlist settings."
-            ) from exc
+
+            # Detect IP allowlist / SSL rejection (Atlas blocks unapproved IPs with SSL errors)
+            is_ip_blocked = "TLSV1_ALERT_INTERNAL_ERROR" in str(
+                exc
+            ) or "SSL handshake failed" in str(exc)
+
+            if is_ip_blocked:
+                import urllib.request
+
+                user_ip = "unknown"
+                try:
+                    with urllib.request.urlopen(
+                        "https://api.ipify.org", timeout=3
+                    ) as r:
+                        user_ip = r.read().decode().strip()
+                except Exception:
+                    pass
+
+                raise ConnectionError(
+                    f"agent_snoop: could not reach MongoDB at {_redact_uri(uri)}\n\n"
+                    f"  ⚠️  This looks like an IP allowlist issue.\n\n"
+                    f"  MongoDB Atlas only allows connections from approved IPs.\n"
+                    f"  You probably need to add your IPs to your Atlas allowlist.\n\n"
+                    f"  How to fix:\n"
+                    f"  1. Go to: https://cloud.mongodb.com/v2#/security/network/accessList\n"
+                    f"  2. Click 'Add IP Address'\n"
+                    f"  3. Add the following IPs:\n"
+                    f"     • Your current IP : {user_ip}\n"
+                    f"  4. Click Confirm and wait ~30 seconds\n\n"
+                    f"  Full error: {short_reason}"
+                ) from exc
+            else:
+                raise ConnectionError(
+                    f"agent_snoop: could not reach MongoDB at {_redact_uri(uri)}\n"
+                    f"  Reason: {short_reason}\n\n"
+                    f"  Check your URI, credentials, and network/IP-allowlist settings."
+                ) from exc
 
         self._db = self._client[AGENTSNOOP_DB]
         self._col = self._db[AGENTSNOOP_COLLECTION]

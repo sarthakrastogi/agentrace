@@ -23,8 +23,22 @@ from agent_snoop.storage.base import StorageBackend
 
 logger = logging.getLogger(__name__)
 
-LITEN_API_URL = "https://liten.tech/api/trace/save"
+LITEN_API_URL = "https://liten.tech/api/traces/save"
 _TIMEOUT_SECONDS = 10
+
+
+class _PostRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Preserve method + body on 307/308 redirects (urllib drops them by default)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new_req = urllib.request.Request(
+            newurl,
+            data=req.data,
+            method=req.get_method(),
+        )
+        for key, val in req.headers.items():
+            new_req.add_header(key, val)
+        return new_req
 
 
 class LitenBackend(StorageBackend):
@@ -80,7 +94,8 @@ class LitenBackend(StorageBackend):
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=_TIMEOUT_SECONDS) as resp:
+            opener = urllib.request.build_opener(_PostRedirectHandler)
+            with opener.open(req, timeout=_TIMEOUT_SECONDS) as resp:
                 status = resp.status
                 if status not in (200, 201):
                     body_text = resp.read().decode("utf-8", errors="replace")
